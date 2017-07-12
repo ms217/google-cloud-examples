@@ -22,13 +22,14 @@ setenforce 0
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 
 [ -d /etc/sysctl.d ] && wget $git_repo/90-custom_sysctl.conf -O /etc/sysctl.d/90-custom_sysctl.conf && sysctl -p
-[ -d /etc/nginx ] && wget $git_repo/nginx.conf -O /etc/nginx/nginx.conf && wget $git_repo/vhost.conf -O /etc/nginx/conf.d/vhost.conf
+[ -d /etc/nginx ] && wget $git_repo/nginx.conf -O /etc/nginx/nginx.conf
+[ -d /etc/nginx/conf.d ] && wget $git_repo/vhost.conf -O /etc/nginx/conf.d/vhost.conf
 
 
 management_ip=$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/management_ip" -H "Metadata-Flavor: Google")
 vhost_name=$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/vhost_name" -H "Metadata-Flavor: Google")
-sed -i "s#<MANAGEMENT_IP>#`$management_ip`#" /etc/nginx/nginx.conf
-sed -i "s#<VHOST_NAME>#`$vhost_name`#" /etc/nginx/conf.d/vhost.conf
+sed -i "s#<MANAGEMENT_IP>#`$management_ip`#g" /etc/nginx/nginx.conf
+sed -i "s#<VHOST_NAME>#`$vhost_name`#g" /etc/nginx/conf.d/vhost.conf
 
 
 systemctl enable glusterd
@@ -44,7 +45,7 @@ mkdir -p /mnt/gluster
 
 ftpuser=$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/ftp-user" -H "Metadata-Flavor: Google")
 ftppass=$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/ftp-passwd" -H "Metadata-Flavor: Google")
-useradd $ftpuser -d /mnt/gluster-storage/web -M
+useradd $ftpuser -d /mnt/gluster-storage/web -m
 echo "$ftppass" | passwd --stdin $ftpuser
 
 
