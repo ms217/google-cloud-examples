@@ -28,8 +28,8 @@ sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 
 management_ip=$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/management_ip" -H "Metadata-Flavor: Google")
 vhost_name=$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/vhost_name" -H "Metadata-Flavor: Google")
-sed -i "s#_MANAGEMENT_IP_#`$management_ip`#g" /etc/nginx/nginx.conf
-sed -i "s#_VHOST_NAME_#`$vhost_name`#g" /etc/nginx/conf.d/vhost.conf
+sed -i "s#_MANAGEMENT_IP_#`echo $management_ip`#g" /etc/nginx/nginx.conf
+sed -i "s#_VHOST_NAME_#`echo $vhost_name`#g" /etc/nginx/conf.d/vhost.conf
 
 
 systemctl enable glusterd
