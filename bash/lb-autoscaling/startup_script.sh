@@ -6,9 +6,11 @@
 
 
 git_repo=https://raw.githubusercontent.com/ms217/google-cloud-examples/master/bash/lb-autoscaling/
+gluster_release=centos-release-gluster310.noarch
 
 yum update -y
-yum install -y nginx net-tools bind-utils nmap tcpdump curl wget lynx iftop atop ntp ntpdate ntp-doc pure-ftpd centos-release-gluster310.noarch mlocate jwhois telnet ftp htop siege lsof strace rsync
+yum install -y nginx net-tools bind-utils nmap tcpdump curl wget lynx iftop atop iotop ntp ntpdate ntp-doc pure-ftpd $gluster_release\
+ mlocate jwhois telnet ftp htop siege lsof strace rsync httpry
 yum install -y glusterfs-server glusterfs-coreutils 
 updatedb
 
@@ -21,15 +23,33 @@ timedatectl set-timezone $timezone
 setenforce 0
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 
+
+#create a swap file of X percent of the total free space of /
+percent_swap=10
+dsk_space_avail=$(df --output=avail / | sed '1d;s/[^0-9]//g')
+swap_size=$(awk "BEGIN { pc=${percent_swap}*${dsk_space_avail}/100; i=int(pc); print (pc-i<0.5)?i:i+1 }")
+fallocate -l $swap_size"K" /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+swapon -s
+echo "/swapfile none swap sw 0 0" >> /etc/fstab
+
+
+
+
 [ -d /etc/sysctl.d ] && wget $git_repo/90-custom_sysctl.conf -O /etc/sysctl.d/90-custom_sysctl.conf && sysctl -p /etc/sysctl.d/90-custom_sysctl.conf
 [ -d /etc/nginx ] && wget $git_repo/nginx.conf -O /etc/nginx/nginx.conf
 [ -d /etc/nginx/conf.d ] && wget $git_repo/vhost.conf -O /etc/nginx/conf.d/vhost.conf
 
+mkdir -p /var/log/nginx/log
 
 management_ip=$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/management_ip" -H "Metadata-Flavor: Google")
 vhost_name=$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/vhost_name" -H "Metadata-Flavor: Google")
 sed -i "s#_MANAGEMENT_IP_#`echo $management_ip`#g" /etc/nginx/nginx.conf
 sed -i "s#_VHOST_NAME_#`echo $vhost_name`#g" /etc/nginx/conf.d/vhost.conf
+
+
 
 
 systemctl enable glusterd
