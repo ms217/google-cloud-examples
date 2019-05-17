@@ -5,12 +5,26 @@
 #This Script should be easily adaptable to other distros though...
 
 
+if [ -f /root/.startup_initial ]
+then
+	ini_val=$(head -n1 /root/.startup_initial)
+		if [ $ini_val == 1 ]
+		then
+			echo "/root/.startup_initial with value 1 found!"
+			exit 1
+		fi
+fi
+
+
+
 git_repo=https://raw.githubusercontent.com/ms217/google-cloud-examples/master/bash/lb-autoscaling/
-gluster_release=centos-release-gluster310.noarch
+gluster_release=centos-release-gluster41.noarch
+pure_ftpd_conf=/etc/pure-ftpd/pure-ftpd.conf
+sshd_conf=/etc/ssh/sshd_config
 
 yum update -y
 yum install -y nginx net-tools bind-utils nmap tcpdump curl wget lynx iftop atop iotop ntp ntpdate ntp-doc pure-ftpd $gluster_release\
- mlocate jwhois telnet ftp htop siege lsof strace rsync httpry
+ mlocate jwhois telnet ftp htop siege lsof strace rsync httpry goaccess nload
 yum install -y glusterfs-server glusterfs-coreutils 
 updatedb
 
@@ -49,8 +63,17 @@ vhost_name=$(curl "http://metadata.google.internal/computeMetadata/v1/project/at
 sed -i "s#_MANAGEMENT_IP_#`echo $management_ip`#g" /etc/nginx/nginx.conf
 sed -i "s#_VHOST_NAME_#`echo $vhost_name`#g" /etc/nginx/conf.d/vhost.conf
 
+if [ -f $pure_ftpd_conf ]
+then
+	sed -ri 's/^MaxClientsPerIP(.*)/MaxClientsPerIP             40/g' $pure_ftpd_conf
+	sed -ri 's/^MaxClientsNumber(.*)/MaxClientsNumber            50/g' $pure_ftpd_conf
+fi
 
-
+if [ -f $sshd_conf ]
+then
+	sed -i 's/PermitRootLogin no/#PermitRootLogin no/g' $sshd_conf
+	systemctl restart sshd
+fi
 
 systemctl enable glusterd
 systemctl enable pure-ftpd
@@ -60,7 +83,7 @@ systemctl start glusterd
 systemctl start pure-ftpd
 systemctl start nginx
 
-mkdir -p /mnt/gluster
+mkdir -p /mnt/gluster-storage
 
 
 ftpuser=$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/ftp-user" -H "Metadata-Flavor: Google")
@@ -73,5 +96,20 @@ echo "$ftppass" | passwd --stdin $ftpuser
 #Update Hostname of the default nginx index.html file.
 [ -f /usr/share/nginx/html/index.html ] && sed -i "s#on Fedora#on `hostname`#g" /usr/share/nginx/html/index.html
 
+#Todo/Notes:
+#determine if the newly spawned instance is the very first instance of this gce project
+#keep this information somewhere
+#
+# for i in $(gcloud compute instances list | grep -v NAME | awk ' { print $1 } '); do gluster peer probe $i ; done
+# for i in $(gcloud compute instances list | grep -v NAME | awk ' { print $1 } '); do echo $i ; done
+# gluster volume create web $(hostname):/mnt/gluster/web force
+#
+#from a new gluster node ($new_node), connect to very first instance aka master:
+# gcloud -q compute ssh --zone europe-west1-d instance-1 --command "gluster peer probe $new_node"
+#
+#add via gcloud command and via ssh the new node to the gluster pool on instance-1
+
+
+echo "1" > /root/.startup_initial
 
 
