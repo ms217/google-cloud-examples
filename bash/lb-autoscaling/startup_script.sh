@@ -18,7 +18,7 @@ fi
 
 
 git_repo=https://raw.githubusercontent.com/ms217/google-cloud-examples/master/bash/lb-autoscaling/
-gluster_release=centos-release-gluster41.noarch
+gluster_release=centos-release-gluster9.noarch
 pure_ftpd_conf=/etc/pure-ftpd/pure-ftpd.conf
 sshd_conf=/etc/ssh/sshd_config
 
